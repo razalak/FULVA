@@ -1,2 +1,1 @@
-# FULVA
-Empowering tradition,Celebrating flavor
+Fulva
