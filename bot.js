@@ -1,25 +1,24 @@
-const TelegramBot = require('node-telegram-bot-api');
+const { Telegraf } = require('telegraf');
 const {
     getGreetingMessage,
     getProductsMessage,
-    getProductLinkMessage
-} = require('./methods.js');
+    getProductLinkMessage,
+} = require('./methods/flowMethods.js');
 
 require('dotenv').config();
 
 // Replace with your own token from BotFather
 const token = process.env.YOUR_TELEGRAM_BOT_TOKEN;
 
-// Create a bot that uses 'polling' to fetch new updates
-const bot = new TelegramBot(token, { polling: true });
+// Create a bot instance
+const bot = new Telegraf(token);
 
 // Handle '/start' command
-bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id;
+bot.start(async (ctx) => {
     const greetingMessage = getGreetingMessage();
 
     try {
-        await bot.sendMessage(chatId, greetingMessage.text, {
+        await ctx.reply(greetingMessage.text, {
             reply_markup: {
                 inline_keyboard: greetingMessage.options.map(option => [{
                     text: option.text,
@@ -33,53 +32,59 @@ bot.onText(/\/start/, async (msg) => {
 });
 
 // Handle callback queries
-bot.on('callback_query', async (callbackQuery) => {
+bot.on('callback_query', async (ctx) => {
+    const callbackQuery = ctx.callbackQuery;
     const message = callbackQuery.message;
     const data = callbackQuery.data;
 
     console.log('Received callback data:', data);
 
-    if (data === 'view_products') {
-        try {
-            const productsMessage = await getProductsMessage();
-            const inline_keyboard = productsMessage.options.map(option => ([{
-                text: option.text,
-                callback_data: option.callback_data
-            }]));
+    switch (true) {
+        case data === 'view_products':
+            try {
+                const { productsMessage, inline_keyboard } = await getProductsMessage();
+                await ctx.reply(productsMessage, {
+                    reply_markup: {
+                        inline_keyboard: inline_keyboard
+                    }
+                });
+            } catch (error) {
+                console.error('Error sending products message:', error.message);
+            }
+            break;
 
-            await bot.sendMessage(message.chat.id, productsMessage.text, {
-                reply_markup: {
-                    inline_keyboard: inline_keyboard
-                }
-            });
-        } catch (error) {
-            console.error('Error sending products message:', error.message);
-        }
-    } else if (data.startsWith('product_')) {
-        const productId = parseInt(data.split('_')[1]);// Assuming productId is already a string
-        console.log('Product ID:', productId);
+        case data.startsWith('product_'):
+            const productId = parseInt(data.split('_')[1]);
+            console.log('Product ID:', productId);
 
-        try {
-            const productLinkMessage = await getProductLinkMessage(productId);
-            console.log('Product Link Message:', productLinkMessage);
+            try {
+                const productLinkMessage = await getProductLinkMessage(productId);
+                console.log('Product Link Message:', productLinkMessage);
+                await ctx.reply(productLinkMessage.text);
+            } catch (error) {
+                console.error('Error sending product link message:', error.message);
+            }
+            break;
 
-            await bot.sendMessage(message.chat.id, productLinkMessage.text);
-        } catch (error) {
-            console.error('Error sending product link message:', error.message);
-        }
-    } else if (data === 'need_help') {
-        try {
-            await bot.sendMessage(message.chat.id, 'How can I assist you? Please describe your issue.');
-        } catch (error) {
-            console.error('Error sending help message:', error.message);
-        }
+        case data === 'need_help':
+            try {
+                await ctx.reply('How can I assist you? Please describe your issue.');
+            } catch (error) {
+                console.error('Error sending help message:', error.message);
+            }
+            break;
+
+        default:
+            // Handle other callback data types here
+            console.log('Unhandled callback data:', data);
     }
 });
-
 // Log any errors
-bot.on('polling_error', (error) => {
-    console.error(`Polling error: ${error.code}`);
+bot.catch((err, ctx) => {
+    console.error(`Encountered an error for ${ctx.updateType}`, err);
 });
 
 // Start the bot
-console.log('Bot is running...');
+bot.launch().then(() => {
+    console.log('Bot is running...');
+});
