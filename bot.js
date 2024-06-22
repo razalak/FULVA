@@ -56,7 +56,8 @@ bot.on('callback_query', async (callbackQuery) => {
             console.error('Error sending products message:', error.message);
         }
     } else if (data.startsWith('product_')) {
-        const productId = parseInt(data.split('_')[1]);
+        const productId = parseInt(data.split('_')[1]);// Assuming productId is already a string
+        console.log('Product ID:', productId);
 
         try {
             const productLinkMessage = await getProductLinkMessage(productId);

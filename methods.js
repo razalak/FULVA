@@ -9,8 +9,9 @@ function readProductsCSV() {
         fs.createReadStream(path.join(__dirname, 'products.csv'))
             .pipe(csv())
             .on('data', (row) => {
+                // console.log('Raw row:', row);
                 products.push({
-                    id: row.ID,
+                    id: parseInt(row.keyid),
                     type: row.Type,
                     sku: row.SKU,
                     name: row.Name,
@@ -74,6 +75,7 @@ function getGreetingMessage() {
 // Function to get a list of products
 async function getProductsMessage() {
     const products = await readProductsCSV();
+    // console.log('Parsed products:', products);
     const productList = products.map(product => ({
         text: product.name,
         callback_data: `product_${product.id}`
@@ -87,13 +89,13 @@ async function getProductsMessage() {
 
 // Function to get product link
 async function getProductLinkMessage(productId) {
-    
+    console.log(productId)
     const products = await readProductsCSV();
     const product = products.find(p => p.id === productId);
 
     if (product) {
         return {
-            text: `Here is the link to ${product.name}: ${product.externalURL}`
+            text: `Click here to buy ${product.name}: ${product.externalURL}`
         };
     } else {
         return {
